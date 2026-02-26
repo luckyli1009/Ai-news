@@ -66,7 +66,6 @@ function assignCategory(title: string, summary: string): string {
 
 export async function GET() {
   try {
-    const geminiEnabled = !!process.env.GEMINI_API_KEY;
     const feedPromises = FEED_URLS.map(async (url) => {
       try {
         const response = await fetch(url, { next: { revalidate: 3600 } });
@@ -110,8 +109,7 @@ export async function GET() {
         success: true, 
         data: MOCK_DATA, 
         isMock: true,
-        lastUpdated,
-        geminiEnabled
+        lastUpdated 
       });
     }
 
@@ -135,9 +133,9 @@ export async function GET() {
       const batch = itemsToTranslate.slice(i, i + BATCH_SIZE);
       const promises = batch.map(async (item) => {
         try {
-          const { title, summary, isTranslated } = await translateNews(item.title, item.summary);
+          const { title, summary, isTranslated } = await translateNews(item.title || '', item.summary || '');
           return { ...item, title, summary, isTranslated };
-        } catch {
+        } catch (e) {
           return { ...item, isTranslated: false };
         }
       });
@@ -157,17 +155,16 @@ export async function GET() {
       success: true, 
       data: finalItems,
       isMock: false,
-      lastUpdated,
-      geminiEnabled
+      lastUpdated
     });
   } catch (error) {
     console.error('API Error:', error);
     return NextResponse.json({ 
-      success: true,
-      data: MOCK_DATA,
+      success: false, 
+      error: 'Failed to fetch news',
+      data: MOCK_DATA, // Fallback to mock data on global error
       isMock: true,
-      lastUpdated: new Date().toLocaleString('zh-CN'),
-      geminiEnabled: !!process.env.GEMINI_API_KEY
-    });
+      lastUpdated: new Date().toLocaleString('zh-CN')
+    }, { status: 500 });
   }
 }
